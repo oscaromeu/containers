@@ -41,6 +41,17 @@ RUN \
     curl -fsSL "https://github.com/adnanh/webhook/releases/download/${VERSION}/webhook-linux-${TARGETARCH}.tar.gz" \
         | tar xzf - -C /app/bin --strip-components=1 \
     && \
+    case "${TARGETARCH}" in \
+        amd64) GCLOUD_ARCH="x86_64" ;; \
+        arm64) GCLOUD_ARCH="arm" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac \
+    && curl -fsSL "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-${GCLOUD_ARCH}.tar.gz" \
+        | tar xzf - -C /usr/local \
+    && /usr/local/google-cloud-sdk/install.sh --quiet --usage-reporting false --path-update true \
+    && ln -s /usr/local/google-cloud-sdk/bin/gcloud /usr/local/bin/gcloud \
+    && ln -s /usr/local/google-cloud-sdk/bin/gsutil /usr/local/bin/gsutil \
+    && \
     pip install uv \
     && uv pip install "apprise>=1, <2" \
     && chown -R root:root /app && chmod -R 755 /app \
