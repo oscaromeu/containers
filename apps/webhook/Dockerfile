@@ -33,6 +33,7 @@ RUN \
         jo \
         jq \
         openssl \
+        skopeo \
         trurl \
         tzdata \
     && mkdir -p /app/bin \
