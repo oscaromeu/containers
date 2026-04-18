@@ -10,5 +10,5 @@ import (
 func Test(t *testing.T) {
 	ctx := context.Background()
 	image := testhelpers.GetTestImage("ghcr.io/oscaromeu/bitcoind:rolling")
-	testhelpers.TestCommandSucceeds(t, ctx, image, nil, "bitcoind", "--version")
+	testhelpers.TestCommandSucceeds(t, ctx, image, nil, "bitcoin-cli", "-version")
 }
