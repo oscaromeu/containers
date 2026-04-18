@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/home-operations/containers/testhelpers"
+	"github.com/oscaromeu/containers/testhelpers"
 )
 
 func Test(t *testing.T) {
 	ctx := context.Background()
-	image := testhelpers.GetTestImage("ghcr.io/home-operations/bitcoind:rolling")
-	testhelpers.TestCommandSucceeds(t, ctx, image, nil, "bitcoind", "--version")
+	image := testhelpers.GetTestImage("ghcr.io/oscaromeu/bitcoind:rolling")
+	testhelpers.TestCommandSucceeds(t, ctx, image, nil, "bitcoin-cli", "-version")
 }

@@ -2,3 +2,5 @@
 
 ARG VERSION
 FROM docker.io/blockstream/bitcoind:${VERSION}
+
+USER 65534:65534
