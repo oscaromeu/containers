@@ -2,100 +2,77 @@
 
 ## Containers
 
-_An opinionated collection of container images_
+_An opinionated collection of container images for my homelab and side projects._
 
 </div>
 
 <div align="center">
 
-![GitHub Repo stars](https://img.shields.io/github/stars/home-operations/containers?style=for-the-badge)
-![GitHub forks](https://img.shields.io/github/forks/home-operations/containers?style=for-the-badge)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/home-operations/containers/release.yaml?style=for-the-badge&label=Release)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/oscaromeu/containers/release.yaml?style=for-the-badge&label=Release)
+![GitHub last commit](https://img.shields.io/github/last-commit/oscaromeu/containers?style=for-the-badge)
 
 </div>
 
-Welcome to our container images! If you are looking for a container, start by [browsing the GitHub Packages page for this repository's packages](https://github.com/orgs/home-operations/packages?repo_name=containers).
+> Most of this great work comes from https://github.com/home-operations/containers — go give them a star.
 
-## Mission Statement
+A small set of container images I use across my [home-ops](https://github.com/oscaromeu/home-ops) cluster and personal projects. Browse published images on the [GitHub Packages page](https://github.com/oscaromeu?tab=packages&repo_name=containers).
 
-Our goal is to provide [semantically versioned](https://semver.org/), [rootless](https://rootlesscontaine.rs/), and [multi-architecture](https://www.docker.com/blog/multi-arch-build-and-images-the-simple-way/) containers for various applications.
+> **Heritage**
+>
+> This project started as a fork of [home-operations/containers](https://github.com/home-operations/containers) and keeps their opinionated, KISS-first philosophy. The CI pipeline, Renovate configuration, and build conventions are theirs — I trimmed apps I don't use, added my own, and adapted a few workflows (Trivy scan with PR comments, App-token auth, attribution to my own GitHub App). If this repo is useful to you, consider starring the upstream.
 
-We adhere to the [KISS principle](https://en.wikipedia.org/wiki/KISS_principle), logging to stdout, maintaining [one process per container](https://testdriven.io/tips/59de3279-4a2d-4556-9cd0-b444249ed31e/), avoiding tools like [s6-overlay](https://github.com/just-containers/s6-overlay), and building all images on top of [Alpine](https://hub.docker.com/_/alpine) or [Ubuntu](https://hub.docker.com/_/ubuntu).
+## Apps
+
+| App | Base image | Notes |
+|-----|------------|-------|
+| [`actions-runner`](./apps/actions-runner) | `ghcr.io/actions/actions-runner` | GitHub Actions self-hosted runner with `yq`, `gh`, Homebrew |
+| [`webhook`](./apps/webhook) | `python:3.13-alpine` | [`adnanh/webhook`](https://github.com/adnanh/webhook) + apprise + `gcloud` |
+
+## Principles
+
+- **Semantic versioning** — image tags follow [semver](https://semver.org/) when upstream provides it.
+- **Rootless** — containers run as a non-root user (`65534:65534`, a.k.a. `nobody:nogroup`) whenever practical.
+- **Multi-architecture** — images are built for `linux/amd64` and `linux/arm64`.
+- **One process per container** — no `s6-overlay`, no `gosu`, logs to stdout.
+- **Immutable via digest** — tags like `rolling` and `27.0` move; pin to `@sha256:...` in production.
 
 ## Features
 
-### Tag Immutability
+### Tag immutability — pin by digest
 
-Containers built here do not use immutable tags in the traditional sense, as seen with [linuxserver.io](https://fleet.linuxserver.io/) or [Bitnami](https://bitnami.com/stacks/containers). Instead, we insist on pinning to the `sha256` digest of the image. While this approach is less visually appealing, it ensures functionality and immutability.
+Only the `sha256` digest is truly immutable.
 
-| Container | Immutable |
-|-----------------------|----|
-| `ghcr.io/home-operations/home-assistant:rolling` | ❌ |
-| `ghcr.io/home-operations/home-assistant:2025.5.1` | ❌ |
-| `ghcr.io/home-operations/home-assistant:rolling@sha256:8053...` | ✅ |
-| `ghcr.io/home-operations/home-assistant:2025.5.1@sha256:8053...` | ✅ |
+| Reference | Immutable |
+|-----------|-----------|
+| `ghcr.io/oscaromeu/webhook:rolling` | ❌ |
+| `ghcr.io/oscaromeu/webhook:2.8.2` | ❌ |
+| `ghcr.io/oscaromeu/webhook:2.8.2@sha256:abc1…` | ✅ |
 
-_If pinning an image to the `sha256` digest, tools like [Renovate](https://github.com/renovatebot/renovate) can update containers based on digest or version changes._
+Pair this with [Renovate](https://github.com/renovatebot/renovate): it can update tag **and** pinned digest automatically.
 
 ### Rootless
 
-By default the majority of our containers run as a non-root user (`65534:65534`), you are able to change the user/group by updating your configuration files.
-
-#### Docker Compose
+Most images run as `UID/GID 65534:65534`. On Kubernetes, use `fsGroup` so the Kubelet sets volume ownership to the same GID at mount time:
 
 ```yaml
-services:
-  home-assistant:
-    image: ghcr.io/home-operations/home-assistant:2025.5.1
-    container_name: home-assistant
-    user: 1000:1000 # The data volume permissions must match this user:group
-    read_only: true # May require mounting in additional dirs as tmpfs
-    tmpfs:
-      - /tmp:rw
-    # ...
-```
-
-#### Kubernetes
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: home-assistant
-# ...
 spec:
-  # ...
-  template:
-    # ...
-    spec:
-      containers:
-        - name: home-assistant
-          image: ghcr.io/home-operations/home-assistant:2025.5.1
-          securityContext: # May require mounting in additional dirs as emptyDir
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: true
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      # ...
+  containers:
+    - name: webhook
+      image: ghcr.io/oscaromeu/webhook:2.8.2
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 65534 # (Requires CSI support)
-        fsGroupChangePolicy: OnRootMismatch # (Requires CSI support)
-      volumes:
-        - name: tmp
-          emptyDir: {}
-      # ...
-# ...
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+  securityContext:
+    fsGroup: 65534
+    fsGroupChangePolicy: OnRootMismatch
 ```
 
-### Passing Arguments to Applications
+`OnRootMismatch` skips the recursive chown once the volume root already matches the fsGroup — a noticeable win on stateful workloads with large working sets.
 
-Some applications only allow certain configurations via command-line arguments rather than environment variables. For such cases, refer to the Kubernetes documentation on [defining commands and arguments for a container](https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/). Then, specify the desired arguments as shown below:
+### Passing arguments
+
+Apps that expect flags instead of env vars:
 
 ```yaml
 args:
@@ -103,67 +80,37 @@ args:
   - "8080"
 ```
 
-### Configuration Volume
+### Verify image signature
 
-For applications requiring persistent configuration data, the configuration volume is hardcoded to `/config` within the container. In most cases, this path cannot be changed.
-
-### Verify Image Signature
-
-These container images are signed using the [attest-build-provenance](https://github.com/actions/attest-build-provenance) action.
-
-To verify that the image was built by GitHub CI, use the following command:
+Images are signed with [`attest-build-provenance`](https://github.com/actions/attest-build-provenance):
 
 ```sh
-gh attestation verify --repo home-operations/containers oci://ghcr.io/home-operations/${APP}:${TAG}
+gh attestation verify --repo oscaromeu/containers \
+  oci://ghcr.io/oscaromeu/${APP}:${TAG}
 ```
 
-or by using [cosign](https://github.com/sigstore/cosign):
+Or with [cosign](https://github.com/sigstore/cosign):
 
 ```sh
 cosign verify-attestation --new-bundle-format --type slsaprovenance1 \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-    --certificate-identity-regexp "^https://github.com/home-operations/containers/.github/workflows/app-builder.yaml@refs/heads/main" \
-    ghcr.io/home-operations/${APP}:${TAG}
+    --certificate-identity-regexp "^https://github.com/oscaromeu/containers/.github/workflows/app-builder.yaml@refs/heads/main" \
+    ghcr.io/oscaromeu/${APP}:${TAG}
 ```
 
-### Eschewed Features
+### Vulnerability scanning
 
-This repository does not support multiple "channels" for the same application. For example:
+- **Trivy** runs on every build and posts a sticky comment on the PR with CRITICAL/HIGH CVEs and outdated OS packages. On main, the scan result is committed back to `apps/<app>/trivy.json` so the history is visible via `git log`.
+- **Grype** runs as a nightly cron scan and uploads SARIF to the repo's Security tab for an aggregated view.
 
-- **Prowlarr**, **Radarr**, **Lidarr**, and **Sonarr** only publish the **develop** branch, not the **master** (stable) branch.
-- **qBittorrent** is only published with **LibTorrent 2.x**. See [this issue](https://github.com/home-operations/containers/issues/848) for more information.
+## Working locally
 
-This approach ensures consistency and focuses on streamlined builds.
-
-## Contributing
-
-We encourage the use of official upstream container images whenever possible. However, contributing to this repository might make sense if:
-
-- The upstream application is **actively maintained**.
-- **And** one of the following applies:
-  - no official image exists.
-  - the official image does not support **multi-architecture builds**.
-  - the official image uses tools like **s6-overlay**, **gosu**, or other unconventional initialization mechanisms.
-  - does not tag releases.
-
-## Deprecations
-
-Containers in this repository may be deprecated for the following reasons:
-
-1. The upstream application is **no longer actively maintained**.
-2. An **official upstream container exists** that aligns with this repository's mission statement.
-3. The **maintenance burden** is unsustainable, such as frequent build failures or instability.
-
-**Note**: Deprecated containers will be announced with a release and remain available in the registry for 6 months before removal.
-
-## Maintaining a Fork
-
-Forking this repository is straightforward. Keep the following in mind:
-
-1. **Renovate Bot**: Set up a GitHub Bot for Renovate by following the instructions [here](https://github.com/renovatebot/github-action).
-2. **Renovate Configuration**: Configuration files are located in the [`.github`](https://github.com/home-operations/.github) and [renovate-config](https://github.com/home-operations/renovate-config) repositories.
-3. **Lowercase Naming**: Ensure your GitHub username/organization and repository names are entirely lowercase to comply with GHCR requirements. Rename them or update workflows as needed.
+- [`mise`](https://mise.jdx.dev) manages the tool chain (Go, `just`, `jq`, `yq`, `lefthook`). Run `mise install` once.
+- Build and test a single app locally: `just local-build <app>`.
+- Trigger a remote build: `just remote-build <app> [release]`.
 
 ## Credits
 
-This repository draws inspiration and ideas from the home-ops community, [hotio.dev](https://hotio.dev/), and [linuxserver.io](https://www.linuxserver.io/) contributors.
+This repository started as a fork of [home-operations/containers](https://github.com/home-operations/containers) — most of the CI plumbing, Renovate configuration, and build philosophy is directly theirs. I also drew inspiration from [hotio.dev](https://hotio.dev/) and [linuxserver.io](https://www.linuxserver.io/).
+
+All mistakes in this repo are mine.
