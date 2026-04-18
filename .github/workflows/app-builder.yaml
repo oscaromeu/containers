@@ -238,6 +238,195 @@ jobs:
         run: |-
           gh attestation verify --repo ${{ github.repository }} oci://ghcr.io/${{ github.repository_owner }}/${{ inputs.app }}@${{ needs.merge.outputs.digest }}
 
+  trivy-scan:
+    name: Trivy Scan
+    needs:
+      - plan
+      - merge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate Token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        id: app-token
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Run Trivy Scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/${{ inputs.app }}@${{ needs.merge.outputs.digest }}
+          format: json
+          output: trivy-results.json
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
+      - name: Check Outdated OS Packages
+        id: outdated
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/${{ inputs.app }}@${{ needs.merge.outputs.digest }}
+        run: |-
+          # Currently only handles Debian/Ubuntu (apt). Alpine images report count=0.
+          UPGRADABLE=$(docker run --rm --entrypoint="" "$IMAGE_REF" \
+            sh -c 'command -v apt-get >/dev/null 2>&1 && apt-get update -qq 2>/dev/null && apt list --upgradable 2>/dev/null | grep -v "^Listing"' || true)
+
+          if [ -z "$UPGRADABLE" ]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "table=" >> "$GITHUB_OUTPUT"
+          else
+            COUNT=$(echo "$UPGRADABLE" | wc -l)
+            echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+            {
+              echo "table<<OUTDATED_EOF"
+              echo "| Package | Current | Available |"
+              echo "|---------|---------|-----------|"
+              echo "$UPGRADABLE" | head -30 | while IFS= read -r line; do
+                PKG=$(echo "$line" | cut -d/ -f1)
+                AVAIL=$(echo "$line" | grep -oP '\S+(?= \[)' | head -1)
+                CURR=$(echo "$line" | grep -oP '(?<=\[upgradable from: )[^\]]+')
+                echo "| ${PKG} | ${CURR:-—} | ${AVAIL:-—} |"
+              done
+              if [ "$COUNT" -gt 30 ]; then
+                echo ""
+                echo "_...and $((COUNT - 30)) more_"
+              fi
+              echo "OUTDATED_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Base Image Version
+        id: base-image
+        run: |-
+          if [ -f "apps/${{ inputs.app }}/docker-bake.hcl" ]; then
+            VERSION=$(docker buildx bake --list type=variables,format=json --progress=quiet \
+              -f "apps/${{ inputs.app }}/docker-bake.hcl" \
+              | jq -r '.[] | select(.name == "VERSION") | .value')
+            echo "current=${VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Normalize and Compare Results
+        id: diff
+        run: |-
+          jq -S '[.Results[]? | .Vulnerabilities[]? | {id: .VulnerabilityID, sev: .Severity, pkg: .PkgName, installed: .InstalledVersion, fixed: .FixedVersion}] | sort_by(.id)' \
+            trivy-results.json > trivy-normalized.json
+
+          if [ -f "apps/${{ inputs.app }}/trivy.json" ]; then
+            jq -S '[.Results[]? | .Vulnerabilities[]? | {id: .VulnerabilityID, sev: .Severity, pkg: .PkgName, installed: .InstalledVersion, fixed: .FixedVersion}] | sort_by(.id)' \
+              "apps/${{ inputs.app }}/trivy.json" > trivy-old-normalized.json
+            if diff -q trivy-normalized.json trivy-old-normalized.json > /dev/null 2>&1; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit Trivy Results
+        if: steps.diff.outputs.changed == 'true' && inputs.release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |-
+          # Commits the new trivy.json back to the repo so the delta vs previous
+          # scan is discoverable via `git log apps/<app>/trivy.json`.
+          cp trivy-results.json "apps/${{ inputs.app }}/trivy.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "apps/${{ inputs.app }}/trivy.json"
+          git commit -m "chore(${{ inputs.app }}): update trivy scan results"
+          git pull --rebase origin "${{ github.head_ref || github.ref_name }}"
+          git push
+
+      - name: Build Trivy Summary
+        id: summary
+        env:
+          OUTDATED_COUNT: ${{ steps.outdated.outputs.count }}
+          OUTDATED_TABLE: ${{ steps.outdated.outputs.table }}
+          BASE_VERSION: ${{ steps.base-image.outputs.current }}
+        run: |-
+          RESULTS="trivy-results.json"
+
+          VULN_BODY=$(jq -r '
+            def vulns: [.Results[]? | .Vulnerabilities[]? | select(.Severity == "CRITICAL" or .Severity == "HIGH")];
+            def critical: [vulns[] | select(.Severity == "CRITICAL")];
+            def high: [vulns[] | select(.Severity == "HIGH")];
+            def row: "| " + .PkgName + " | " + .InstalledVersion + " | " + (.FixedVersion // "\u2014") + " | [" + .VulnerabilityID + "](" + .PrimaryURL + ") |";
+            def table(sev): sev | if length == 0 then "" else
+              "| Package | Installed | Fixed | CVE |\n|---------|-----------|-------|-----|\n" +
+              ([sort_by(.PkgName)[] | row] | join("\n")) + "\n"
+            end;
+
+            if (vulns | length) == 0 then
+              "No CRITICAL or HIGH vulnerabilities found.\n"
+            else
+              (if (critical | length) > 0 then
+                "#### CRITICAL (" + (critical | length | tostring) + ")\n\n" + table(critical) + "\n"
+              else "" end) +
+              (if (high | length) > 0 then
+                "#### HIGH (" + (high | length | tostring) + ")\n\n" + table(high) + "\n"
+              else "" end)
+            end
+          ' "$RESULTS")
+
+          {
+            echo "body<<TRIVY_EOF"
+            echo "### Security Report: \`${{ inputs.app }}\`"
+            echo ""
+            echo "**Base image version:** \`${BASE_VERSION}\`"
+            echo ""
+            echo "---"
+            echo ""
+            echo "#### Vulnerabilities"
+            echo ""
+            echo "$VULN_BODY"
+            if [ "${OUTDATED_COUNT}" -gt 0 ]; then
+              echo "---"
+              echo ""
+              echo "<details>"
+              echo "<summary>Outdated OS Packages (${OUTDATED_COUNT})</summary>"
+              echo ""
+              echo "$OUTDATED_TABLE"
+              echo ""
+              echo "</details>"
+            else
+              echo "---"
+              echo ""
+              echo "All OS packages are up to date."
+            fi
+            echo "TRIVY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post PR Comment
+        if: ${{ ! inputs.release }}
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        with:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          header: trivy-scan-${{ inputs.app }}
+          message: ${{ steps.summary.outputs.body }}
+
   test:
     if: ${{ ! inputs.release }}
     name: Test
