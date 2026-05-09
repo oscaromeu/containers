@@ -26,6 +26,7 @@ A small set of container images I use across my [home-ops](https://github.com/os
 | App | Base image | Notes |
 |-----|------------|-------|
 | [`actions-runner`](./apps/actions-runner) | `ghcr.io/actions/actions-runner` | GitHub Actions self-hosted runner with `yq`, `gh`, Homebrew |
+| [`icecast`](./apps/icecast) | `alpine:3.23` | [`icecast`](https://icecast.org/) 2.4.x with env-driven config and stdout/stderr logging |
 | [`webhook`](./apps/webhook) | `python:3.13-alpine` | [`adnanh/webhook`](https://github.com/adnanh/webhook) + apprise + `gcloud` |
 
 ## Principles
