@@ -60,7 +60,7 @@ RUN apk add --no-cache \
         nftables \
         traceroute \
         # --- Connectivity probes ---
-        arping \
+        # (arping comes via iputils above)
         busybox-extras \
         fping \
         iftop \
