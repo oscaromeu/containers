@@ -1,0 +1,2 @@
+# Empty on purpose: prevents include/.dockerignore (restrictive default) from
+# being rsynced over and excluding our vendored Go source from build context.
