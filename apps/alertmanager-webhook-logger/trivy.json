@@ -1,0 +1,148 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "0.69.3"
+  },
+  "ReportID": "019e6348-d94c-7587-a967-9959b496104f",
+  "CreatedAt": "2026-05-26T07:56:19.148363781Z",
+  "ArtifactID": "sha256:59940256c0a4ffadc62fbb3cb775de9dcd73a3b98e1ddd4ec7c7fa37b585ca25",
+  "ArtifactName": "ghcr.io/oscaromeu/alertmanager-webhook-logger@sha256:45707a067391c312fc8263ee070d3a4b33a53179713643b67c215ebc396cf940",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "Size": 6617600,
+    "ImageID": "sha256:9d7877f47ce5c749b3d5e2fadac015decd24feb5e96810302f1932c572a70f9f",
+    "DiffIDs": [
+      "sha256:5794b6df50b6fb843125e009b0f8a25c5b18e58ecf6b4eda7ad76fba023fa070",
+      "sha256:b23cf34c5959b878f80a074c0838c872f4cb57aa15b8ff36abfd56bee6c860fe"
+    ],
+    "RepoDigests": [
+      "ghcr.io/oscaromeu/alertmanager-webhook-logger@sha256:45707a067391c312fc8263ee070d3a4b33a53179713643b67c215ebc396cf940"
+    ],
+    "Reference": "ghcr.io/oscaromeu/alertmanager-webhook-logger@sha256:45707a067391c312fc8263ee070d3a4b33a53179713643b67c215ebc396cf940",
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2026-05-26T07:55:23.647622522Z",
+      "history": [
+        {
+          "created": "2026-05-26T07:55:23.633999362Z",
+          "created_by": "ARG VERSION=1.0",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-05-26T07:55:23.633999362Z",
+          "created_by": "COPY /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-05-26T07:55:23.647622522Z",
+          "created_by": "COPY /out/alertmanager-webhook-logger /app/alertmanager-webhook-logger # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-05-26T07:55:23.647622522Z",
+          "created_by": "USER 65534:65534",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-05-26T07:55:23.647622522Z",
+          "created_by": "EXPOSE [6725/tcp]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-05-26T07:55:23.647622522Z",
+          "created_by": "ENTRYPOINT [\"/app/alertmanager-webhook-logger\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:5794b6df50b6fb843125e009b0f8a25c5b18e58ecf6b4eda7ad76fba023fa070",
+          "sha256:b23cf34c5959b878f80a074c0838c872f4cb57aa15b8ff36abfd56bee6c860fe"
+        ]
+      },
+      "config": {
+        "Entrypoint": [
+          "/app/alertmanager-webhook-logger"
+        ],
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "Labels": {
+          "org.opencontainers.image.created": "2026-05-26T07:54:41.900Z",
+          "org.opencontainers.image.description": "My collection of container images",
+          "org.opencontainers.image.licenses": "MIT",
+          "org.opencontainers.image.revision": "e24efe7d248471e1b91e2d1d08d141cd9c4ad2c0",
+          "org.opencontainers.image.source": "https://github.com/oscaromeu/containers/tree/main/apps/alertmanager-webhook-logger",
+          "org.opencontainers.image.title": "alertmanager-webhook-logger",
+          "org.opencontainers.image.url": "https://ghcr.io/oscaromeu/alertmanager-webhook-logger",
+          "org.opencontainers.image.vendor": "oscaromeu",
+          "org.opencontainers.image.version": "1.0"
+        },
+        "User": "65534:65534",
+        "WorkingDir": "/",
+        "ExposedPorts": {
+          "6725/tcp": {}
+        }
+      }
+    },
+    "Layers": [
+      {
+        "Size": 221184,
+        "Digest": "sha256:163458a61ce3f9cc6b343efbc9450191fc04d3969a2c43a6c051158e1552f0ce",
+        "DiffID": "sha256:5794b6df50b6fb843125e009b0f8a25c5b18e58ecf6b4eda7ad76fba023fa070"
+      },
+      {
+        "Size": 6396416,
+        "Digest": "sha256:c7d4f7ca5a79d7d81696b12ac9498fb476f972320980fc0ff6dd19d6e5f666dd",
+        "DiffID": "sha256:b23cf34c5959b878f80a074c0838c872f4cb57aa15b8ff36abfd56bee6c860fe"
+      }
+    ]
+  },
+  "Results": [
+    {
+      "Target": "app/alertmanager-webhook-logger",
+      "Class": "lang-pkgs",
+      "Type": "gobinary",
+      "Packages": [
+        {
+          "ID": "github.com/tomtom-international/alertmanager-webhook-logger",
+          "Name": "github.com/tomtom-international/alertmanager-webhook-logger",
+          "Identifier": {
+            "PURL": "pkg:golang/github.com/tomtom-international/alertmanager-webhook-logger",
+            "UID": "ef9c2c28304e5e0c"
+          },
+          "Relationship": "root",
+          "DependsOn": [
+            "stdlib@v1.25.10"
+          ],
+          "Layer": {
+            "Digest": "sha256:c7d4f7ca5a79d7d81696b12ac9498fb476f972320980fc0ff6dd19d6e5f666dd",
+            "DiffID": "sha256:b23cf34c5959b878f80a074c0838c872f4cb57aa15b8ff36abfd56bee6c860fe"
+          },
+          "AnalyzedBy": "gobinary"
+        },
+        {
+          "ID": "stdlib@v1.25.10",
+          "Name": "stdlib",
+          "Identifier": {
+            "PURL": "pkg:golang/stdlib@v1.25.10",
+            "UID": "9b168049aae2b892"
+          },
+          "Version": "v1.25.10",
+          "Relationship": "direct",
+          "Layer": {
+            "Digest": "sha256:c7d4f7ca5a79d7d81696b12ac9498fb476f972320980fc0ff6dd19d6e5f666dd",
+            "DiffID": "sha256:b23cf34c5959b878f80a074c0838c872f4cb57aa15b8ff36abfd56bee6c860fe"
+          },
+          "AnalyzedBy": "gobinary"
+        }
+      ]
+    }
+  ]
+}
