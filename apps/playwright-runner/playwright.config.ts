@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices, type ReporterDescription } from '@playwright/test'
 
 // Generic, env-driven Playwright runner config. Tests are NOT baked into the
 // image — they are mounted at runtime into PW_TEST_DIR (e.g. from a ConfigMap).
@@ -12,6 +12,16 @@ const num = (v: string | undefined, fallback: number): number =>
 // baseURL empty and failing later with a cryptic "invalid URL".
 const BASE_URL = process.env.PW_BASE_URL || 'http://localhost'
 
+const reporter: ReporterDescription[] = [
+  ['./reporter-json-line.ts'],
+  ['html', { outputFolder: process.env.PW_REPORT_DIR || 'playwright-report', open: 'never' }],
+]
+// ClickHouse reporter (runs + steps): activates only when CLICKHOUSE_URL is set,
+// so the runner still works without ClickHouse.
+if (process.env.CLICKHOUSE_URL) {
+  reporter.push(['./reporter-clickhouse.ts'])
+}
+
 export default defineConfig({
   testDir: process.env.PW_TEST_DIR || '/tests',
   fullyParallel: false,
@@ -20,12 +30,7 @@ export default defineConfig({
   retries: num(process.env.PW_RETRIES, 0),
   timeout: num(process.env.PW_TIMEOUT_MS, 90_000),
   globalTimeout: num(process.env.PW_GLOBAL_TIMEOUT_MS, 10 * 60_000),
-  reporter: [
-    // Step 1: structured stdout only (→ scraped into logs). The ClickHouse
-    // reporter will be added here in step 5.
-    ['./reporter-json-line.ts'],
-    ['html', { outputFolder: process.env.PW_REPORT_DIR || 'playwright-report', open: 'never' }],
-  ],
+  reporter,
   use: {
     baseURL: BASE_URL,
     trace: (process.env.PW_TRACE as 'on' | 'off' | 'retain-on-failure') || 'retain-on-failure',
