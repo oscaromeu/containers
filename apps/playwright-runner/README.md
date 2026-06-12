@@ -34,7 +34,24 @@ in the image.
   be scraped into logs.
 - `html` — Playwright HTML report under `PW_REPORT_DIR`.
 
-A ClickHouse reporter (per-run + per-step rows) will be added later.
+- `reporter-clickhouse.ts` — inserts one `runs` row + N `steps` rows per
+  execution into ClickHouse (batched in `onEnd`). Activates **only** when
+  `CLICKHOUSE_URL` is set; a telemetry failure never fails the probe.
+
+### ClickHouse reporter env
+
+| Var | Default | Description |
+|-----|---------|-------------|
+| `CLICKHOUSE_URL` | — | HTTP endpoint, e.g. `http://clickhouse-<chi>.<ns>.svc:8123`. **Set to activate.** |
+| `CLICKHOUSE_USER` | `default` | ClickHouse user |
+| `CLICKHOUSE_PASSWORD` | _(empty)_ | ClickHouse password (from a Secret) |
+| `CLICKHOUSE_DATABASE` | `e2e` | Target database |
+| `PROBE_NAME` | `unknown` | Logical probe id (becomes the `probe` column / row in Grafana) |
+| `PROBE_ENV` | `dev` | Environment label |
+| `GIT_SHA`, `PROBE_REPORT_URL`, `PROBE_VIDEO_URL`, `PROBE_TRACE_URL` | _(empty)_ | Optional metadata stored on the `runs` row |
+
+`run_id` is the pod name (`$HOSTNAME`). Schema: see the `e2e.runs` / `e2e.steps`
+DDL in the project doc.
 
 ## Run a test from a ConfigMap (sketch)
 
