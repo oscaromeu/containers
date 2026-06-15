@@ -26,9 +26,12 @@ RUN npm install --no-audit --no-fund \
     rm -rf /root/.npm
 
 # S3 client (MinIO mc, single static binary; S3-compatible with Garage). Used by
-# the cronjob command wrapper to upload the Playwright HTML report — which embeds
+# the run-and-upload entrypoint to ship the Playwright HTML report — which embeds
 # the video + trace on failure — to object storage after each run.
-RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc \
+# TARGETARCH so each platform of the multi-arch build gets the matching binary:
+# the homelab is arm64, and an amd64 mc fails at runtime with "Exec format error".
+ARG TARGETARCH
+RUN curl -fsSL "https://dl.min.io/client/mc/release/linux-${TARGETARCH}/mc" -o /usr/local/bin/mc \
     && chmod +x /usr/local/bin/mc
 
 # The runner config + reporters are baked in (a platform concern). Tests are
