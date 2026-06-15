@@ -27,6 +27,7 @@ A small set of container images I use across my [home-ops](https://github.com/os
 |-----|------------|-------|
 | [`actions-runner`](./apps/actions-runner) | `ghcr.io/actions/actions-runner` | GitHub Actions self-hosted runner with `yq`, `gh`, Homebrew |
 | [`icecast`](./apps/icecast) | `alpine:3.23` | [`icecast`](https://icecast.org/) 2.4.x with env-driven config and stdout/stderr logging |
+| [`kubectl`](./apps/kubectl) | `alpine:3.23` | Upstream `kubectl` from [dl.k8s.io](https://dl.k8s.io) (checksum-verified) + `bash`; drop-in for `bitnami/kubectl` in CronJobs |
 | [`ops-tools`](./apps/ops-tools) | `python:3.13-alpine3.23` | netshoot-style debug pod base + Python (requests/pyyaml/rich/httpie) for cluster sync scripts |
 | [`webhook`](./apps/webhook) | `python:3.13-alpine` | [`adnanh/webhook`](https://github.com/adnanh/webhook) + apprise + `gcloud` |
 
