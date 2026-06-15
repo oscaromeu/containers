@@ -11,8 +11,12 @@ import { readFileSync } from 'node:fs'
 // Buffers during the run and flushes one batched insert per table in onEnd.
 // Activates only when CLICKHOUSE_URL is set; a telemetry failure never fails the probe.
 //
-// net_timing requires the test to record a HAR — provided by the co-mounted
-// net-timing.ts fixture (import { test } from './net-timing').
+//   e2e.web_vitals — one row per page test (LCP/CLS/FCP + the full
+//                    PerformanceNavigationTiming breakdown), from the
+//                    `web-vitals.json` attachment.
+// net_timing + web_vitals require the baked @probe/playwright fixture
+// (import { test } from '@probe/playwright'), which records the HAR and reads
+// the navigation timing.
 
 type Status = 'pass' | 'flaky' | 'fail'
 
@@ -106,7 +110,7 @@ class ClickHouseReporter implements Reporter {
   private readonly steps: StepRow[] = []
   private readonly stepWindows: StepWindow[] = []
   private readonly net: NetRecord[] = []
-  private readonly vitals: Array<Record<string, number> & { test: string; started_at: number }> = []
+  private readonly vitals: Array<Record<string, number | string> & { test: string; started_at: number }> = []
 
   onBegin(_config: FullConfig, suite: { allTests(): TestCase[] }): void {
     if (!this.enabled) return
@@ -152,11 +156,11 @@ class ClickHouseReporter implements Reporter {
         // missing/malformed HAR — skip net timing for this test
       }
     }
-    // Parse the Web Vitals recorded by the fixture.
+    // Parse the Web Vitals + navigation timing recorded by the fixture.
     const wv = result.attachments.find((a) => a.name === 'web-vitals.json')
     if (wv?.body) {
       try {
-        const v = JSON.parse(wv.body.toString()) as Record<string, number>
+        const v = JSON.parse(wv.body.toString()) as Record<string, number | string>
         this.vitals.push({ test: test.title, started_at: result.startTime.getTime(), ...v })
       } catch {
         // missing/malformed web-vitals — skip
@@ -235,6 +239,22 @@ class ClickHouseReporter implements Reporter {
       cls: v.cls ?? 0,
       dom_content_loaded_ms: v.dom_content_loaded_ms ?? 0,
       load_ms: v.load_ms ?? 0,
+      // PerformanceNavigationTiming breakdown (0 where the browser reused a warm
+      // connection — DNS/TCP/TLS only fire on a cold navigation).
+      redirect_ms: v.redirect_ms ?? 0,
+      dns_ms: v.dns_ms ?? 0,
+      tcp_ms: v.tcp_ms ?? 0,
+      tls_ms: v.tls_ms ?? 0,
+      request_ms: v.request_ms ?? 0,
+      response_ms: v.response_ms ?? 0,
+      dom_processing_ms: v.dom_processing_ms ?? 0,
+      dom_interactive_ms: v.dom_interactive_ms ?? 0,
+      transfer_bytes: v.transfer_bytes ?? 0,
+      encoded_body_bytes: v.encoded_body_bytes ?? 0,
+      decoded_body_bytes: v.decoded_body_bytes ?? 0,
+      redirect_count: v.redirect_count ?? 0,
+      response_status: v.response_status ?? 0,
+      nav_type: String(v.nav_type ?? ''),
     }))
 
     let client: ClickHouseClient | undefined

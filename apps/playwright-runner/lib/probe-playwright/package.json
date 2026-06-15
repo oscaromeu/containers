@@ -1,0 +1,8 @@
+{
+  "name": "@probe/playwright",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Baked test instrumentation for the playwright-runner image: per-test HAR + Web Vitals + PerformanceNavigationTiming.",
+  "main": "index.js",
+  "types": "index.d.ts"
+}

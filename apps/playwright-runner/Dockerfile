@@ -11,8 +11,8 @@ ENV NODE_ENV=production \
     PW_TEST_DIR=/tests \
     # Tests are mounted at runtime in PW_TEST_DIR (outside /app), so Node's
     # node_modules walk-up never reaches /app/node_modules. NODE_PATH makes
-    # @playwright/test (and a future @probe/playwright helper module) resolvable
-    # from specs located anywhere.
+    # @playwright/test and the @probe/playwright helper module resolvable from
+    # specs located anywhere.
     NODE_PATH=/app/node_modules
 
 # Install @playwright/test pinned to the SAME version as the base image. The
@@ -31,5 +31,11 @@ RUN npm install --no-audit --no-fund \
 # build step is needed for mounted tests.
 COPY playwright.config.ts reporter-json-line.ts reporter-clickhouse.ts tsconfig.json ./
 COPY selftest/ ./selftest/
+
+# Baked instrumentation module. Specs do `import { test, expect } from
+# '@probe/playwright'` and get HAR + Web Vitals + navigation timing for free.
+# Plain CJS in node_modules → loaded directly by Node (not transpiled), resolved
+# via NODE_PATH like @playwright/test. No per-probe copy of the fixture.
+COPY lib/probe-playwright/ /app/node_modules/@probe/playwright/
 
 CMD ["npx", "playwright", "test"]
