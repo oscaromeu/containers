@@ -25,6 +25,12 @@ RUN npm install --no-audit --no-fund \
       "@clickhouse/client@^1" && \
     rm -rf /root/.npm
 
+# S3 client (MinIO mc, single static binary; S3-compatible with Garage). Used by
+# the cronjob command wrapper to upload the Playwright HTML report — which embeds
+# the video + trace on failure — to object storage after each run.
+RUN curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc \
+    && chmod +x /usr/local/bin/mc
+
 # The runner config + reporters are baked in (a platform concern). Tests are
 # NOT baked: they are provided at runtime, mounted into PW_TEST_DIR (e.g. from a
 # Kubernetes ConfigMap). Playwright transpiles `.ts` specs on the fly, so no
@@ -37,5 +43,10 @@ COPY selftest/ ./selftest/
 # Plain CJS in node_modules → loaded directly by Node (not transpiled), resolved
 # via NODE_PATH like @playwright/test. No per-probe copy of the fixture.
 COPY lib/probe-playwright/ /app/node_modules/@probe/playwright/
+
+# Opt-in artifact-upload entrypoint: runs the probe, then ships the HTML report
+# to object storage. Used as the cronjob `command` when S3_* env is set; the
+# default CMD (`npx playwright test`) still works for plain runs.
+COPY --chmod=0755 lib/run-and-upload.sh /app/run-and-upload.sh
 
 CMD ["npx", "playwright", "test"]
