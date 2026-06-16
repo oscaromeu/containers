@@ -21,6 +21,12 @@ const reporter: ReporterDescription[] = [
 if (process.env.CLICKHOUSE_URL) {
   reporter.push(['./reporter-clickhouse.ts'])
 }
+// Prometheus Pushgateway reporter (per-run gauges): activates only when
+// PUSHGATEWAY_URL is set. Independent of the ClickHouse reporter — both can run
+// on the same probe (the "metric vs event" A/B).
+if (process.env.PUSHGATEWAY_URL) {
+  reporter.push(['./reporter-prometheus.ts'])
+}
 
 export default defineConfig({
   testDir: process.env.PW_TEST_DIR || '/tests',
