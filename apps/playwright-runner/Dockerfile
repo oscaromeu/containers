@@ -38,7 +38,7 @@ RUN curl -fsSL "https://dl.min.io/client/mc/release/linux-${TARGETARCH}/mc" -o /
 # NOT baked: they are provided at runtime, mounted into PW_TEST_DIR (e.g. from a
 # Kubernetes ConfigMap). Playwright transpiles `.ts` specs on the fly, so no
 # build step is needed for mounted tests.
-COPY playwright.config.ts reporter-json-line.ts reporter-clickhouse.ts tsconfig.json ./
+COPY playwright.config.ts reporter-json-line.ts reporter-clickhouse.ts reporter-prometheus.ts tsconfig.json ./
 COPY selftest/ ./selftest/
 
 # Baked instrumentation module. Specs do `import { test, expect } from
