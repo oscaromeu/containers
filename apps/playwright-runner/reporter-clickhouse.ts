@@ -257,6 +257,21 @@ class ClickHouseReporter implements Reporter {
       nav_type: String(v.nav_type ?? ''),
     }))
 
+    // Per-probe thresholds from env (sane defaults so a new probe works without
+    // any config). Upserted every run → e2e.probe_config (ReplacingMergeTree).
+    const numEnv = (v: string | undefined, d: number): number => {
+      const n = Number(v)
+      return Number.isFinite(n) && n > 0 ? n : d
+    }
+    const probeConfig = {
+      probe: this.probe,
+      slo_target: numEnv(process.env.PROBE_SLO_TARGET, 99),
+      high_ms: numEnv(process.env.PROBE_HIGH_MS, 2000),
+      critical_ms: numEnv(process.env.PROBE_CRITICAL_MS, 4000),
+      fatal_ms: numEnv(process.env.PROBE_FATAL_MS, 8000),
+      updated_at: iso(this.startedAtMs),
+    }
+
     let client: ClickHouseClient | undefined
     try {
       client = createClient({
@@ -267,6 +282,12 @@ class ClickHouseReporter implements Reporter {
       })
       const settings = { date_time_input_format: 'best_effort' as const }
       await client.insert({ table: 'runs', values: [run], format: 'JSONEachRow', clickhouse_settings: settings })
+      // Best-effort: a missing/old probe_config table must never drop the run's telemetry.
+      try {
+        await client.insert({ table: 'probe_config', values: [probeConfig], format: 'JSONEachRow', clickhouse_settings: settings })
+      } catch (e) {
+        console.error('[reporter-clickhouse] probe_config upsert failed (continuing):', e)
+      }
       if (this.steps.length > 0) {
         await client.insert({ table: 'steps', values: this.steps, format: 'JSONEachRow', clickhouse_settings: settings })
       }
