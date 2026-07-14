@@ -29,6 +29,7 @@ A small set of container images I use across my [home-ops](https://github.com/os
 | [`icecast`](./apps/icecast) | `alpine:3.23` | [`icecast`](https://icecast.org/) 2.4.x with env-driven config and stdout/stderr logging |
 | [`kubectl`](./apps/kubectl) | `alpine:3.23` | Upstream `kubectl` from [dl.k8s.io](https://dl.k8s.io) (checksum-verified) + `bash`; drop-in for `bitnami/kubectl` in CronJobs |
 | [`ops-tools`](./apps/ops-tools) | `python:3.13-alpine3.23` | netshoot-style debug pod base + Python (requests/pyyaml/rich/httpie) for cluster sync scripts |
+| [`pinchflat`](./apps/pinchflat) | `ghcr.io/kieraneglin/pinchflat` | [Pinchflat](https://github.com/kieraneglin/pinchflat) with pinned, checksum-verified `yt-dlp` + `deno` (Renovate keeps them fresh) |
 | [`webhook`](./apps/webhook) | `python:3.13-alpine` | [`adnanh/webhook`](https://github.com/adnanh/webhook) + apprise + `gcloud` |
 
 ## Principles
