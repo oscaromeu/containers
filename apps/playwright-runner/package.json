@@ -1,0 +1,19 @@
+{
+  "name": "playwright-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generic Playwright runner image: config + reporters + the @probe/playwright instrumentation fixture. Tests are mounted at runtime, not baked.",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1",
+    "@playwright/test": "1.57.0",
+    "@probe/playwright": "file:lib/probe-playwright"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0"
+  }
+}

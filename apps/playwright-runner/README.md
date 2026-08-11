@@ -72,6 +72,22 @@ volumes:
 
 See [`examples/podinfo.spec.ts`](examples/podinfo.spec.ts) for a starting spec.
 
+## Image build
+
+Dependencies are installed with `npm ci` from the committed `package-lock.json`,
+so rebuilding an old commit resolves the same tree. `@playwright/test` is pinned
+in `package.json` and **must** equal the base image tag (`VERSION` in
+`docker-bake.hcl`, without the leading `v`) — the browsers ship in the base
+image, and a mismatch fails runs with "Executable doesn't exist". The build
+compares both and aborts on drift, so bumping Playwright means editing the two.
+
+`@probe/playwright` is a `file:` dependency: `npm ci` links it into
+`/app/node_modules`, where `NODE_PATH` makes it resolvable from specs mounted
+anywhere.
+
+The image runs as the base image's non-root `pwuser` (uid 1000), which owns
+`/app` and writes the report and test-output dirs there.
+
 ## Local usage
 
 ```bash
