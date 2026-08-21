@@ -10,6 +10,7 @@ import (
 func Test(t *testing.T) {
 	ctx := context.Background()
 	image := testhelpers.GetTestImage("ghcr.io/oscaromeu/allquiet-sync:rolling")
-	testhelpers.TestFileExists(t, ctx, image, "/app/allquiet-sync", nil)
+	// scratch image: no shell nor coreutils, so running the binary itself is
+	// both the existence check and the smoke test.
 	testhelpers.TestCommandSucceeds(t, ctx, image, nil, "/app/allquiet-sync", "-h")
 }
