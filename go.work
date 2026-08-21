@@ -3,4 +3,5 @@ go 1.25.1
 use (
 	.
 	./apps/alertmanager-webhook-logger
+	./apps/allquiet-sync
 )
